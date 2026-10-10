@@ -1,8 +1,8 @@
 {
   "name": "Local Badge and Age",
-  "description": "Client-side only: adds a badge and a 2015 account creation date to your own profile view.",
+  "description": "Client-side only: adds a badge and a 2015 account creation date to your own profile view, plus fake deafen in voice.",
   "authors": [{ "name": "me" }],
   "main": "index.js",
-  "hash": "1",
+  "hash": "2",
   "vendetta": { "icon": "ic_badge" }
 }
