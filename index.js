@@ -4,12 +4,9 @@
   // ===== Settings: change these =====
   var FAKE_YEAR = 2015;
   var FAKE_DATE = Date.UTC(FAKE_YEAR, 4, 15); // May 15, 2015
-  var BADGE = {
-    id: "local_badge",
-    description: "Early Supporter",
-    icon: "7060786766c9c840eb3019e725d2b358" // Discord CDN badge icon hash
-  };
-  var THEME = [0x5865f2, 0xeb459e]; // [primary, accent] profile theme colors; set to null to disable
+  var BADGE = null; // set to {id, description, icon} to add a local badge, or null for none
+  var HIDE_ALL_BADGES = true; // hides your real badges on your own profile view (only you see this)
+  var THEME = null; // [primary, accent] profile theme colors; set to null to disable
   // ==================================
 
   var unpatches = [];
@@ -40,21 +37,51 @@
     } catch (e) { console.log("[LocalBadge] createdAt patch failed", e); }
   }
 
+  // Hide your real badges (local view only)
+  function patchHide() {
+    if (!HIDE_ALL_BADGES) return;
+    try {
+      var me = UserStore.getCurrentUser();
+      if (me) {
+        ["publicFlags", "flags", "public_flags"].forEach(function (k) {
+          try {
+            if (k in me) Object.defineProperty(me, k, { configurable: true, get: function () { return 0; } });
+          } catch (e) {}
+        });
+      }
+    } catch (e) { console.log("[LocalBadge] hide flags failed", e); }
+  }
+
   // Fake badge on your own profile
   function patchBadge() {
     if (!UserProfileStore || !UserProfileStore.getUserProfile) return;
     unpatches.push(patcher.after("getUserProfile", UserProfileStore, function (args, res) {
       if (!res || String(args[0]) !== String(myId())) return res;
-      var badges = Array.isArray(res.badges) ? res.badges.slice() : [];
-      if (!badges.some(function (b) { return b.id === BADGE.id; })) badges.push(BADGE);
-      try { res.badges = badges; } catch (e) {}
+      if (HIDE_ALL_BADGES) { try { res.badges = []; } catch (e) {} }
+      if (BADGE) {
+        var badges = Array.isArray(res.badges) ? res.badges.slice() : [];
+        if (!badges.some(function (b) { return b.id === BADGE.id; })) badges.push(BADGE);
+        try { res.badges = badges; } catch (e) {}
+      }
       if (THEME) { try { res.themeColors = THEME; } catch (e) {} }
       return res;
     }));
   }
 
   exports.onLoad = function () {
+    var info = {
+      UserStore: !!UserStore,
+      UserProfileStore: !!UserProfileStore,
+      getUserProfile: !!(UserProfileStore && UserProfileStore.getUserProfile),
+      extractTimestamp: !!(Snowflake && Snowflake.extractTimestamp),
+      myId: myId()
+    };
+    console.log("[LocalBadge] loaded", JSON.stringify(info));
+    try {
+      vendetta.ui.toasts.showToast("LocalBadge: " + JSON.stringify(info));
+    } catch (e) {}
     patchAge();
+    patchHide();
     patchBadge();
   };
 
