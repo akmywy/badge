@@ -2,11 +2,15 @@
   "use strict";
 
   // ===== Settings: change these =====
-  var FAKE_YEAR = 2015;
-  var FAKE_DATE = Date.UTC(FAKE_YEAR, 4, 15); // May 15, 2015
-  var BADGE = null; // set to {id, description, icon} to add a local badge, or null for none
-  var HIDE_ALL_BADGES = true; // hides your real badges on your own profile view (only you see this)
-  var THEME = [0x0b0b2b, 0x2b2f9e]; // dark navy to blurple (Blurple Twilight look) // [primary, accent] profile theme colors; set to null to disable
+  var FAKE_DATE = Date.UTC(2015, 4, 15); // May 15, 2015
+  var HIDE_REAL_BADGES = true; // hides your real badges on your own profile view (only you see this)
+  // Local badges shown on your own profile (only you see them). Icon = Discord CDN badge icon hash.
+  var BADGES = [
+    { id: "local_nitro", description: "Subscriber since 2020", icon: "2ba85e8026a8614b640c2837bcdfe21b" },
+    { id: "local_nitro_6y", description: "Subscribed for 6 years", icon: "5b154df19c53dce2af92c9b61e6be5e2" },
+    { id: "local_early", description: "Early Supporter", icon: "7060786766c9c840eb3019e725d2b358" }
+  ];
+  var THEME = [0x0b0b2b, 0x2b2f9e]; // [primary, accent]; set to null to disable
   // ==================================
 
   var unpatches = [];
@@ -18,7 +22,6 @@
     try { return UserStore.getCurrentUser().id; } catch (e) { return null; }
   }
 
-  // Fake creation date (the "Member since" value)
   function patchAge() {
     if (Snowflake && Snowflake.extractTimestamp) {
       unpatches.push(patcher.instead("extractTimestamp", Snowflake, function (args, orig) {
@@ -37,9 +40,8 @@
     } catch (e) { console.log("[LocalBadge] createdAt patch failed", e); }
   }
 
-  // Hide your real badges (local view only)
   function patchHide() {
-    if (!HIDE_ALL_BADGES) return;
+    if (!HIDE_REAL_BADGES) return;
     try {
       var me = UserStore.getCurrentUser();
       if (me) {
@@ -52,43 +54,26 @@
     } catch (e) { console.log("[LocalBadge] hide flags failed", e); }
   }
 
-  // Fake badge on your own profile
-  function patchBadge() {
+  function patchProfile() {
     if (!UserProfileStore || !UserProfileStore.getUserProfile) return;
     unpatches.push(patcher.after("getUserProfile", UserProfileStore, function (args, res) {
       if (!res || String(args[0]) !== String(myId())) return res;
-      if (!patchBadge.logged) {
-        patchBadge.logged = true;
-        var n = Array.isArray(res.badges) ? res.badges.length : "none";
-        console.log("[LocalBadge] profile badges found:", n);
-        try { vendetta.ui.toasts.showToast("LocalBadge: profile badges = " + n); } catch (e) {}
-      }
-      if (HIDE_ALL_BADGES) { try { res.badges = []; } catch (e) {} }
-      if (BADGE) {
-        var badges = Array.isArray(res.badges) ? res.badges.slice() : [];
-        if (!badges.some(function (b) { return b.id === BADGE.id; })) badges.push(BADGE);
-        try { res.badges = badges; } catch (e) {}
-      }
+      try {
+        var list = HIDE_REAL_BADGES ? [] : (Array.isArray(res.badges) ? res.badges.slice() : []);
+        BADGES.forEach(function (b) {
+          if (!list.some(function (x) { return x.id === b.id; })) list.push(b);
+        });
+        res.badges = list;
+      } catch (e) {}
       if (THEME) { try { res.themeColors = THEME; } catch (e) {} }
       return res;
     }));
   }
 
   exports.onLoad = function () {
-    var info = {
-      UserStore: !!UserStore,
-      UserProfileStore: !!UserProfileStore,
-      getUserProfile: !!(UserProfileStore && UserProfileStore.getUserProfile),
-      extractTimestamp: !!(Snowflake && Snowflake.extractTimestamp),
-      myId: myId()
-    };
-    console.log("[LocalBadge] loaded", JSON.stringify(info));
-    try {
-      vendetta.ui.toasts.showToast("LocalBadge: " + JSON.stringify(info));
-    } catch (e) {}
     patchAge();
     patchHide();
-    patchBadge();
+    patchProfile();
   };
 
   exports.onUnload = function () {
