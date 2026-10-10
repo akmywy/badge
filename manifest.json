@@ -1,0 +1,7 @@
+{
+  "name": "Local Badge and Age",
+  "description": "Client-side only: adds a badge and a 2015 account creation date to your own profile view.",
+  "authors": [{ "name": "me" }],
+  "main": "index.js",
+  "vendetta": { "icon": "ic_badge" }
+}
