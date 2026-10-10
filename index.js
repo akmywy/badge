@@ -6,7 +6,7 @@
   var FAKE_DATE = Date.UTC(FAKE_YEAR, 4, 15); // May 15, 2015
   var BADGE = null; // set to {id, description, icon} to add a local badge, or null for none
   var HIDE_ALL_BADGES = true; // hides your real badges on your own profile view (only you see this)
-  var THEME = null; // [primary, accent] profile theme colors; set to null to disable
+  var THEME = [0x0b0b2b, 0x2b2f9e]; // dark navy to blurple (Blurple Twilight look) // [primary, accent] profile theme colors; set to null to disable
   // ==================================
 
   var unpatches = [];
@@ -57,6 +57,12 @@
     if (!UserProfileStore || !UserProfileStore.getUserProfile) return;
     unpatches.push(patcher.after("getUserProfile", UserProfileStore, function (args, res) {
       if (!res || String(args[0]) !== String(myId())) return res;
+      if (!patchBadge.logged) {
+        patchBadge.logged = true;
+        var n = Array.isArray(res.badges) ? res.badges.length : "none";
+        console.log("[LocalBadge] profile badges found:", n);
+        try { vendetta.ui.toasts.showToast("LocalBadge: profile badges = " + n); } catch (e) {}
+      }
       if (HIDE_ALL_BADGES) { try { res.badges = []; } catch (e) {} }
       if (BADGE) {
         var badges = Array.isArray(res.badges) ? res.badges.slice() : [];
